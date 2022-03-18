@@ -1,0 +1,9 @@
+{
+  "extends": [
+    "@antfu"
+  ],
+  "rules": {
+    "semi": [ "warn", "always" ],
+    "@typescript-eslint/semi": [ "warn", "always" ]
+  }
+}
