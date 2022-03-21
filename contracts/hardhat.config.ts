@@ -1,42 +1,109 @@
-import * as dotenv from "dotenv";
+import dotenv from "dotenv";
+import { HardhatUserConfig } from "hardhat/types";
+import { accounts } from "../lens-protocol/helpers/test-wallets";
+import {
+  eEthereumNetwork,
+  eNetwork,
+  ePolygonNetwork,
+  eXDaiNetwork,
+} from "../lens-protocol/helpers/types";
+import { HARDHATEVM_CHAINID } from "../lens-protocol/helpers/hardhat-constants";
+import { NETWORKS_RPC_URL } from "../lens-protocol/helper-hardhat-config";
 
-import { HardhatUserConfig, task } from "hardhat/config";
+import glob from "glob";
+import path from "path";
+
+import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-etherscan";
-import "@nomiclabs/hardhat-waffle";
 import "@typechain/hardhat";
-import "hardhat-gas-reporter";
 import "solidity-coverage";
-
+import "hardhat-gas-reporter";
+import "hardhat-contract-sizer";
+import "hardhat-log-remover";
+import "hardhat-spdx-license-identifier";
 dotenv.config();
 
-// This is a sample Hardhat task. To learn how to create your own go to
-// https://hardhat.org/guides/create-task.html
-task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
-  const accounts = await hre.ethers.getSigners();
+if (!process.env.SKIP_LOAD) {
+  glob.sync("./tasks/**/*.ts").forEach(function (file) {
+    require(path.resolve(file));
+  });
+}
 
-  for (const account of accounts) {
-    console.log(account.address);
-  }
+const DEFAULT_BLOCK_GAS_LIMIT = 12450000;
+const MNEMONIC_PATH = "m/44'/60'/0'/0";
+const MNEMONIC = process.env.MNEMONIC || "";
+const MAINNET_FORK = process.env.MAINNET_FORK === "true";
+const TRACK_GAS = process.env.TRACK_GAS === "true";
+const ETHERSCAN_KEY = process.env.ETHERSCAN_KEY || "";
+
+const getCommonNetworkConfig = (networkName: eNetwork, networkId: number) => ({
+  url: NETWORKS_RPC_URL[networkName],
+  accounts: {
+    mnemonic: MNEMONIC,
+    path: MNEMONIC_PATH,
+    initialIndex: 0,
+    count: 20,
+  },
 });
 
-// You need to export an object to set up your config
-// Go to https://hardhat.org/config/ to learn more
+const mainnetFork = MAINNET_FORK
+  ? {
+      blockNumber: 12012081,
+      url: NETWORKS_RPC_URL[eEthereumNetwork.main],
+    }
+  : undefined;
 
 const config: HardhatUserConfig = {
-  solidity: "0.8.4",
+  solidity: {
+    compilers: [
+      {
+        version: "0.8.10",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+            details: {
+              yul: true,
+            },
+          },
+        },
+      },
+    ],
+  },
   networks: {
-    ropsten: {
-      url: process.env.ROPSTEN_URL || "",
-      accounts:
-        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    kovan: getCommonNetworkConfig(eEthereumNetwork.kovan, 42),
+    ropsten: getCommonNetworkConfig(eEthereumNetwork.ropsten, 3),
+    main: getCommonNetworkConfig(eEthereumNetwork.main, 1),
+    tenderlyMain: getCommonNetworkConfig(eEthereumNetwork.tenderlyMain, 3030),
+    matic: getCommonNetworkConfig(ePolygonNetwork.matic, 137),
+    mumbai: getCommonNetworkConfig(ePolygonNetwork.mumbai, 80001),
+    xdai: getCommonNetworkConfig(eXDaiNetwork.xdai, 100),
+    hardhat: {
+      hardfork: "london",
+      blockGasLimit: DEFAULT_BLOCK_GAS_LIMIT,
+      gas: DEFAULT_BLOCK_GAS_LIMIT,
+      gasPrice: 8000000000,
+      chainId: HARDHATEVM_CHAINID,
+      throwOnTransactionFailures: true,
+      throwOnCallFailures: true,
+      accounts: accounts.map(
+        ({ secretKey, balance }: { secretKey: string; balance: string }) => ({
+          privateKey: secretKey,
+          balance,
+        })
+      ),
+      forking: mainnetFork,
     },
   },
   gasReporter: {
-    enabled: process.env.REPORT_GAS !== undefined,
-    currency: "USD",
+    enabled: TRACK_GAS,
+  },
+  spdxLicenseIdentifier: {
+    overwrite: false,
+    runOnCompile: false,
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY,
+    apiKey: ETHERSCAN_KEY,
   },
 };
 
