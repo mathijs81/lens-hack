@@ -4,7 +4,6 @@ import {IFollowModule} from '@lens/interfaces/IFollowModule.sol';
 import {ModuleBase} from '@lens/core/modules/ModuleBase.sol';
 import {FollowValidatorFollowModuleBase} from '@lens/core/modules/follow/FollowValidatorFollowModuleBase.sol';
 
-
 contract SecretCodeFollowModule is IFollowModule, FollowValidatorFollowModuleBase {
     error PasscodeInvalid();
 
