@@ -1,40 +1,40 @@
-import dotenv from "dotenv";
-import { HardhatUserConfig } from "hardhat/types";
-import { accounts } from "../lens-protocol/helpers/test-wallets";
+import dotenv from 'dotenv';
+import { HardhatUserConfig } from 'hardhat/types';
+import { accounts } from '../lens-protocol/helpers/test-wallets';
 import {
   eEthereumNetwork,
   eNetwork,
   ePolygonNetwork,
   eXDaiNetwork,
-} from "../lens-protocol/helpers/types";
-import { HARDHATEVM_CHAINID } from "../lens-protocol/helpers/hardhat-constants";
-import { NETWORKS_RPC_URL } from "../lens-protocol/helper-hardhat-config";
+} from '../lens-protocol/helpers/types';
+import { HARDHATEVM_CHAINID } from '../lens-protocol/helpers/hardhat-constants';
+import { NETWORKS_RPC_URL } from '../lens-protocol/helper-hardhat-config';
 
-import glob from "glob";
-import path from "path";
+import glob from 'glob';
+import path from 'path';
 
-import "@nomiclabs/hardhat-ethers";
-import "@nomiclabs/hardhat-etherscan";
-import "@typechain/hardhat";
-import "solidity-coverage";
-import "hardhat-gas-reporter";
-import "hardhat-contract-sizer";
-import "hardhat-log-remover";
-import "hardhat-spdx-license-identifier";
+import '@nomiclabs/hardhat-ethers';
+import '@nomiclabs/hardhat-etherscan';
+import '@typechain/hardhat';
+import 'solidity-coverage';
+import 'hardhat-gas-reporter';
+import 'hardhat-contract-sizer';
+import 'hardhat-log-remover';
+import 'hardhat-spdx-license-identifier';
 dotenv.config();
 
 if (!process.env.SKIP_LOAD) {
-  glob.sync("./tasks/**/*.ts").forEach(function (file) {
+  glob.sync('./tasks/**/*.ts').forEach(function (file) {
     require(path.resolve(file));
   });
 }
 
 const DEFAULT_BLOCK_GAS_LIMIT = 12450000;
 const MNEMONIC_PATH = "m/44'/60'/0'/0";
-const MNEMONIC = process.env.MNEMONIC || "";
-const MAINNET_FORK = process.env.MAINNET_FORK === "true";
-const TRACK_GAS = process.env.TRACK_GAS === "true";
-const ETHERSCAN_KEY = process.env.ETHERSCAN_KEY || "";
+const MNEMONIC = process.env.MNEMONIC || '';
+const MAINNET_FORK = process.env.MAINNET_FORK === 'true';
+const TRACK_GAS = process.env.TRACK_GAS === 'true';
+const ETHERSCAN_KEY = process.env.ETHERSCAN_KEY || '';
 
 const getCommonNetworkConfig = (networkName: eNetwork, networkId: number) => ({
   url: NETWORKS_RPC_URL[networkName],
@@ -57,7 +57,7 @@ const config: HardhatUserConfig = {
   solidity: {
     compilers: [
       {
-        version: "0.8.10",
+        version: '0.8.10',
         settings: {
           optimizer: {
             enabled: true,
@@ -79,19 +79,17 @@ const config: HardhatUserConfig = {
     mumbai: getCommonNetworkConfig(ePolygonNetwork.mumbai, 80001),
     xdai: getCommonNetworkConfig(eXDaiNetwork.xdai, 100),
     hardhat: {
-      hardfork: "london",
+      hardfork: 'london',
       blockGasLimit: DEFAULT_BLOCK_GAS_LIMIT,
       gas: DEFAULT_BLOCK_GAS_LIMIT,
       gasPrice: 8000000000,
       chainId: HARDHATEVM_CHAINID,
       throwOnTransactionFailures: true,
       throwOnCallFailures: true,
-      accounts: accounts.map(
-        ({ secretKey, balance }: { secretKey: string; balance: string }) => ({
-          privateKey: secretKey,
-          balance,
-        })
-      ),
+      accounts: accounts.map(({ secretKey, balance }: { secretKey: string; balance: string }) => ({
+        privateKey: secretKey,
+        balance,
+      })),
       forking: mainnetFork,
     },
   },

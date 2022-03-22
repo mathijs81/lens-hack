@@ -3,3 +3,7 @@ artifacts
 cache
 coverage*
 gasReporterOutput.json
+typechain-types
+typechain
+@lens
+lens_src
