@@ -51,6 +51,8 @@ import { LensHubLibraryAddresses } from '../lens_src/typechain-types/factories/L
 import { FAKE_PRIVATEKEY, ZERO_ADDRESS } from '../lens_src/test/helpers/constants';
 import { SecretCodeCollectModule } from '../typechain-types/SecretCodeCollectModule';
 import { SecretCodeCollectModule__factory } from '../typechain-types/factories/SecretCodeCollectModule__factory';
+import { DutchAuctionCollectModule } from '../typechain-types/DutchAuctionCollectModule';
+import { DutchAuctionCollectModule__factory } from '../typechain-types/factories/DutchAuctionCollectModule__factory';
 import {
   computeContractAddress,
   ProtocolState,
@@ -115,6 +117,7 @@ export let limitedTimedFeeCollectModule: LimitedTimedFeeCollectModule;
 
 // -- Added for the hack ---
 export let secretCodeCollectModule: SecretCodeCollectModule;
+export let dutchAuctionCollectModule: DutchAuctionCollectModule;
 
 // Follow
 export let approvalFollowModule: ApprovalFollowModule;
@@ -233,6 +236,10 @@ before(async function () {
   // --- Added for hack --
   secretCodeCollectModule = await new SecretCodeCollectModule__factory(deployer).deploy(
     lensHub.address
+  );
+  dutchAuctionCollectModule = await new DutchAuctionCollectModule__factory(deployer).deploy(
+    lensHub.address,
+    moduleGlobals.address
   );
 
   feeFollowModule = await new FeeFollowModule__factory(deployer).deploy(
