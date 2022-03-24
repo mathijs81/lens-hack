@@ -61,9 +61,6 @@ contract EnglishAuctionCollectModule is ICollectModule, FeeModuleBase, FollowVal
 
     mapping(uint256 => mapping(uint256 => AuctionSettings)) internal _profilePubToSettingsMap;
 
-    address nextReceiver;
-    bytes4 internal constant ERC721_RECEIVED = 0x150b7a02;
-
     constructor(address hub, address moduleGlobals) FeeModuleBase(moduleGlobals) ModuleBase(hub) {}
 
     function getCurrentPrice(uint256 profileId, uint256 pubId) public view returns (uint256 price) {
@@ -80,9 +77,12 @@ contract EnglishAuctionCollectModule is ICollectModule, FeeModuleBase, FollowVal
         bytes calldata data
     ) external override onlyHub returns (bytes memory) {
         AuctionSettings memory decodedParams = abi.decode(data, (AuctionSettings));
-        if (!_currencyWhitelisted(decodedParams.currency) || decodedParams.recipient == address(0) ||
-            decodedParams.highestBidder != address(0) || decodedParams.highestBid == 0)
-            revert Errors.InitParamsInvalid();
+        if (
+            !_currencyWhitelisted(decodedParams.currency) ||
+            decodedParams.recipient == address(0) ||
+            decodedParams.highestBidder != address(0) ||
+            decodedParams.highestBid == 0
+        ) revert Errors.InitParamsInvalid();
 
         _profilePubToSettingsMap[profileId][pubId] = decodedParams;
         return data;
@@ -114,11 +114,7 @@ contract EnglishAuctionCollectModule is ICollectModule, FeeModuleBase, FollowVal
         }
         if (settings.highestBidder != address(0)) {
             // Refund to previous highest bidder
-            IERC20(currency).safeTransferFrom(
-                address(this),
-                settings.highestBidder,
-                settings.highestBid
-            );
+            IERC20(currency).safeTransfer(settings.highestBidder, settings.highestBid);
         }
         settings.highestBid = amount;
         settings.highestBidder = msg.sender;
@@ -128,7 +124,7 @@ contract EnglishAuctionCollectModule is ICollectModule, FeeModuleBase, FollowVal
 
     function finishAuction(uint256 profileId, uint256 pubId) external {
         AuctionSettings storage settings = _profilePubToSettingsMap[profileId][pubId];
-        if(settings.highestBidder == address(0)) {
+        if (settings.highestBidder == address(0)) {
             revert Errors.CollectNotAllowed();
         }
         ILensHub(HUB).collect(profileId, pubId, hex'');
@@ -160,9 +156,13 @@ contract EnglishAuctionCollectModule is ICollectModule, FeeModuleBase, FollowVal
 
         IERC20(settings.currency).safeTransfer(settings.recipient, amount);
         IERC20(settings.currency).safeTransfer(treasury, treasuryAmount);
-        
+
         // Move the just-minted NFT into this address to the winner
-        IERC721(ILensHub(HUB).getCollectNFT(profileId, pubId)).transferFrom(address(this), winner, 1);
+        IERC721(ILensHub(HUB).getCollectNFT(profileId, pubId)).transferFrom(
+            address(this),
+            winner,
+            1
+        );
 
         emit AuctionEnded(profileId, pubId, winner, settings.highestBid, settings.currency);
     }

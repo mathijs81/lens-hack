@@ -53,6 +53,8 @@ import { SecretCodeCollectModule } from '../typechain-types/SecretCodeCollectMod
 import { SecretCodeCollectModule__factory } from '../typechain-types/factories/SecretCodeCollectModule__factory';
 import { DutchAuctionCollectModule } from '../typechain-types/DutchAuctionCollectModule';
 import { DutchAuctionCollectModule__factory } from '../typechain-types/factories/DutchAuctionCollectModule__factory';
+import { EnglishAuctionCollectModule__factory } from '../typechain-types/factories/EnglishAuctionCollectModule__factory';
+import { EnglishAuctionCollectModule } from '../typechain-types/EnglishAuctionCollectModule';
 import {
   computeContractAddress,
   ProtocolState,
@@ -118,6 +120,7 @@ export let limitedTimedFeeCollectModule: LimitedTimedFeeCollectModule;
 // -- Added for the hack ---
 export let secretCodeCollectModule: SecretCodeCollectModule;
 export let dutchAuctionCollectModule: DutchAuctionCollectModule;
+export let englishAuctionCollectModule: EnglishAuctionCollectModule;
 
 // Follow
 export let approvalFollowModule: ApprovalFollowModule;
@@ -238,6 +241,10 @@ before(async function () {
     lensHub.address
   );
   dutchAuctionCollectModule = await new DutchAuctionCollectModule__factory(deployer).deploy(
+    lensHub.address,
+    moduleGlobals.address
+  );
+  englishAuctionCollectModule = await new EnglishAuctionCollectModule__factory(deployer).deploy(
     lensHub.address,
     moduleGlobals.address
   );
