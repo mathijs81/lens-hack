@@ -1,8 +1,34 @@
 @charset "UTF-8";
 
+// Polygon Finity settings:
+$primary: #8247e5;
+$secondary: #cacdd5;
+$success: #5fc92e;
+$info: #2561ed;
+$warning: #ffad0d;
+$danger: #ff3236;
+$light: #fff;
+//$dark:          $gray-900 !default;
+$font-family-sans-serif: "DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans",
+    "Liberation Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+$headings-font-weight: 700;
+$btn-font-weight: 700;
+$body-bg: #b182ff;
+$body-color: #fff;
+
 @import "bootstrap/scss/bootstrap";
 @import "bootstrap-icons/font/bootstrap-icons.css";
 
 body {
-    background-color: #d0ffd0;
+    background: linear-gradient(151.26deg, #b182ff 0%, #8310c9 51.36%, #5315d9 98.61%);
+    min-height: 100vh;
+}
+.btn {
+    min-width: 300px;
+    padding: 10px 16px;
+    box-shadow: 0px 1px 1px rgba(0, 0, 0, 0.08);
+    border-radius: 6px;
+}
+.btn-light {
+    color: $primary;
 }

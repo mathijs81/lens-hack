@@ -1,8 +1,9 @@
 
 <template>
   <div class="container app position-relative">
-    <h1>Lens hack</h1>
-    <h5>LFGrow 2022</h5>
+    <h1 class="h1 py-4">Lens hack</h1>
+    <h5 class="h5 py-2">LFGrow 2022</h5>
+    <button class="btn btn-light">Connect to Wallet</button>
   </div>
 </template>
 
