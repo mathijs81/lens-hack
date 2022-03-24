@@ -22,8 +22,6 @@ import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
  * the NFT. To prevent the highest bidder to be the only one that can finish the auction
  * and trigger payments (the post creator probably also wants to have the payment be done!)
  * we let the contract itself call LensHub.collect() and forward the NFT to the original bidder.
-
- TODO: add min increase
  */
 
 /**
@@ -42,7 +40,7 @@ struct AuctionSettings {
 
 contract EnglishAuctionCollectModule is ICollectModule, FeeModuleBase, FollowValidationModuleBase {
     using SafeERC20 for IERC20;
-    error NotHighestBid();
+    error BidTooLow();
     error OnlyCallFinishAuction();
     event NewHighestBid(
         uint256 indexed profileId,
@@ -59,16 +57,30 @@ contract EnglishAuctionCollectModule is ICollectModule, FeeModuleBase, FollowVal
         address currency
     );
 
+    // Force a minimum increase with each bid, otherwise bots potentially snipe
+    // for (current bid + 1 wei) at the end of an auction.
+    uint256 public constant MINIMUM_PERCENTAGE_INCREASE = 5;
+
     mapping(uint256 => mapping(uint256 => AuctionSettings)) internal _profilePubToSettingsMap;
 
     constructor(address hub, address moduleGlobals) FeeModuleBase(moduleGlobals) ModuleBase(hub) {}
 
-    function getCurrentPrice(uint256 profileId, uint256 pubId) public view returns (uint256 price) {
+    function getCurrentBid(uint256 profileId, uint256 pubId) public view returns (uint256 price) {
         AuctionSettings storage settings = _profilePubToSettingsMap[profileId][pubId];
         if (settings.highestBidder == address(0)) {
             return 0;
         }
         return settings.highestBid;
+    }
+
+    function getMinimumBid(uint256 profileId, uint256 pubId) public view returns (uint256 price) {
+        AuctionSettings storage settings = _profilePubToSettingsMap[profileId][pubId];
+        require(settings.highestBid > 0, "Not initialized");
+        if (settings.highestBidder == address(0)) {
+            return settings.highestBid;
+        } else {
+            return ((100 + MINIMUM_PERCENTAGE_INCREASE) * settings.highestBid) / 100;
+        }
     }
 
     function initializePublicationCollectModule(
@@ -94,11 +106,13 @@ contract EnglishAuctionCollectModule is ICollectModule, FeeModuleBase, FollowVal
         address currency,
         uint256 amount
     ) external {
-        // TODO: check followers if needed
         AuctionSettings storage settings = _profilePubToSettingsMap[profileId][pubId];
         if (settings.recipient == address(0)) {
             // This combination was never initialized
             revert Errors.CollectNotAllowed();
+        }
+        if (settings.onlyFollowers) {
+            _checkFollowValidity(profileId, msg.sender);
         }
         if (block.timestamp > settings.endTimestamp) {
             revert Errors.CollectExpired();
@@ -106,11 +120,8 @@ contract EnglishAuctionCollectModule is ICollectModule, FeeModuleBase, FollowVal
         if (currency != settings.currency) {
             revert Errors.ModuleDataMismatch();
         }
-        if (
-            (settings.highestBidder != address(0) && amount <= settings.highestBid) ||
-            amount < settings.highestBid
-        ) {
-            revert NotHighestBid();
+        if (amount < getMinimumBid(profileId, pubId)) {
+            revert BidTooLow();
         }
         if (settings.highestBidder != address(0)) {
             // Refund to previous highest bidder
@@ -148,7 +159,6 @@ contract EnglishAuctionCollectModule is ICollectModule, FeeModuleBase, FollowVal
         address winner = settings.highestBidder;
         // Prevent multiple executions by removing bidder:
         settings.highestBidder = address(0);
-        nextReceiver = address(0);
 
         (address treasury, uint16 treasuryFee) = _treasuryData();
         uint256 treasuryAmount = (settings.highestBid * treasuryFee) / BPS_MAX;

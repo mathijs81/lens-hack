@@ -1,10 +1,11 @@
 import '@nomiclabs/hardhat-ethers';
 import { expect } from 'chai';
-import { parseEther, formatEther } from 'ethers/lib/utils';
+import { BigNumberish } from 'ethers';
+import { formatEther, parseEther } from 'ethers/lib/utils';
 import { MAX_UINT256, ZERO_ADDRESS } from '../lens_src/test/helpers/constants';
+import { ERRORS } from '../lens_src/test/helpers/errors';
 import { CollectNFT__factory } from '../lens_src/typechain-types';
 import { getTimestamp, setNextBlockTimestamp } from './helpers/utils';
-import { BigNumberish } from 'ethers';
 import {
   abiCoder,
   currency,
@@ -19,10 +20,10 @@ import {
   MOCK_URI,
   moduleGlobals,
   userAddress,
-  userTwo,
   userThree,
-  userTwoAddress,
   userThreeAddress,
+  userTwo,
+  userTwoAddress,
 } from './__setup.spec';
 
 /*
@@ -160,6 +161,57 @@ makeSuiteCleanRoom('English Auction Collect Module', function () {
       const owner = await collectNFT.ownerOf(1);
 
       expect(owner).to.be.equal(userTwoAddress);
+    });
+
+    it('Bids must increase by 5% or more', async function () {
+      const currentTimestamp = await getTimestamp();
+      await expect(
+        lensHub.post({
+          profileId: FIRST_PROFILE_ID,
+          contentURI: MOCK_URI,
+          collectModule: englishAuctionCollectModule.address,
+          collectModuleData: createData(Number(currentTimestamp) + 100, 1, false),
+          referenceModule: ZERO_ADDRESS,
+          referenceModuleData: [],
+        })
+      ).to.not.be.reverted;
+      const module = englishAuctionCollectModule.connect(userTwo);
+      await expect(
+        module.makeBid(FIRST_PROFILE_ID, 1, currency.address, parseEther('1'))
+      ).to.not.be.reverted;
+
+      expect(asNum(await module.getMinimumBid(FIRST_PROFILE_ID, 1))).to.be.closeTo(1.05, 1e-6);
+      await expect(
+        module.makeBid(FIRST_PROFILE_ID, 1, currency.address, parseEther('1.04'))
+      ).to.be.revertedWith('BidTooLow');
+      await expect(
+        module.makeBid(FIRST_PROFILE_ID, 1, currency.address, parseEther('1.05'))
+      ).to.not.be.reverted;
+    });
+
+    it('Only followers can bid when specified', async function () {
+      const currentTimestamp = await getTimestamp();
+      await expect(
+        lensHub.post({
+          profileId: FIRST_PROFILE_ID,
+          contentURI: MOCK_URI,
+          collectModule: englishAuctionCollectModule.address,
+          collectModuleData: createData(Number(currentTimestamp) + 100, 1, true),
+          referenceModule: ZERO_ADDRESS,
+          referenceModuleData: [],
+        })
+      ).to.not.be.reverted;
+      const module = englishAuctionCollectModule.connect(userTwo);
+      await expect(
+        module.makeBid(FIRST_PROFILE_ID, 1, currency.address, parseEther('1'))
+      ).to.be.revertedWith(ERRORS.FOLLOW_INVALID);
+
+      await expect(lensHub.connect(userTwo).follow([FIRST_PROFILE_ID], [[]])).to.not.be.reverted;
+      // Works after following
+
+      await expect(
+        module.makeBid(FIRST_PROFILE_ID, 1, currency.address, parseEther('1'))
+      ).to.not.be.reverted;
     });
   });
 });
