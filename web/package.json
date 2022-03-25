@@ -10,6 +10,7 @@
     "lintFix": "eslint --fix \"**/*.{vue,ts,js}\""
   },
   "dependencies": {
+    "@download/blockies": "^1.0.3",
     "@ethersproject/providers": "^5.6.1",
     "@metamask/detect-provider": "^1.2.0",
     "@vueuse/core": "^8.1.2",

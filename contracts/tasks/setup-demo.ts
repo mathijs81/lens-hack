@@ -120,8 +120,17 @@ task('setup-demo', 'Sets up the Demo in web/ after `npm run full-deploy-local`')
     console.log(`addtl. user: ${allAddresses[6].address}`);
 
     const currency = Currency__factory.connect(addrs['currency'], governance);
-    await waitForTx(currency.mint(allAddresses[4].address, parseEther('1000')));
-    await waitForTx(currency.mint(allAddresses[5].address, parseEther('1000')));
-    await waitForTx(currency.mint(allAddresses[6].address, parseEther('1000')));
+    for (let i = 4; i <= 6; i++) {
+      const addr = allAddresses[i];
+      await waitForTx(currency.mint(addr.address, parseEther('1000')));
+      await waitForTx(
+        currency.connect(addr).approve(englishAuctionCollectModule.address, parseEther('1000'))
+      );
+      await waitForTx(
+        currency.connect(addr).approve(dutchAuctionCollectModule.address, parseEther('1000'))
+      );
+
+      await waitForTx(lensHub.connect(addr).follow([1], [[]]));
+    }
   }
 );

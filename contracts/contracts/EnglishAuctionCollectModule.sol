@@ -83,6 +83,14 @@ contract EnglishAuctionCollectModule is ICollectModule, FeeModuleBase, FollowVal
         }
     }
 
+    function getSettings(uint256 profileId, uint256 pubId)
+        public
+        view
+        returns (AuctionSettings memory settings)
+    {
+        return _profilePubToSettingsMap[profileId][pubId];
+    }
+
     function initializePublicationCollectModule(
         uint256 profileId,
         uint256 pubId,

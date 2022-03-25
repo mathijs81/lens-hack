@@ -1,11 +1,12 @@
 
 <template>
+  <div class="position-absolute end-0 m-3">
+    <button class="btn btn-sm btn-light" @click="forwardtime()">
+      Forward time
+    </button>
+  </div>
+
   <div class="container app position-relative">
-    <div class="float-end">
-      <button class="btn btn-sm btn-light" @click="forwardtime()">
-        Forward time
-      </button>
-    </div>
     <h1 class="h1 pt-4">
       Auction Lens posts demo
     </h1>
@@ -20,7 +21,7 @@
       Connect to Wallet
     </button>
     <p v-else>
-      Connected as {{ wallet.address.value }}
+      Connected as <Address :address="wallet.address.value" />
     </p>
     <PostList :profile-id="1" />
   </div>
@@ -34,6 +35,7 @@ import JsonRpcProvider, { UrlJsonRpcProvider } from '@ethersproject/providers';
 import { providers } from 'ethers';
 import { wallet } from './util/wallet';
 import PostList from './components/PostList.vue';
+import Address from './components/Address.vue';
 
 const connect = () => {
   wallet.connect();
@@ -44,7 +46,7 @@ const forwardtime = async() => {
 
   const blockNumber = await provider.send('eth_blockNumber', []);
   const block = await provider.send('eth_getBlockByNumber', [blockNumber, false]);
-  await provider.send('evm_setNextBlockTimestamp', [Number(block.timestamp) + 1 * 60]);
+  await provider.send('evm_setNextBlockTimestamp', [Number(block.timestamp) + 5 * 60]);
   await provider.send('evm_mine', []);
 };
 

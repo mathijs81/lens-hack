@@ -2,6 +2,7 @@ lockfileVersion: 5.3
 
 specifiers:
   '@antfu/eslint-config': ^0.18.8
+  '@download/blockies': ^1.0.3
   '@ethersproject/providers': ^5.6.1
   '@metamask/detect-provider': ^1.2.0
   '@types/bootstrap': ^5.1.9
@@ -20,6 +21,7 @@ specifiers:
   vue-tsc: ^0.32.1
 
 dependencies:
+  '@download/blockies': 1.0.3
   '@ethersproject/providers': 5.6.1
   '@metamask/detect-provider': 1.2.0
   '@vueuse/core': 8.1.2_vue@3.2.31
@@ -165,6 +167,10 @@ packages:
       '@babel/helper-validator-identifier': 7.16.7
       to-fast-properties: 2.0.0
     dev: true
+
+  /@download/blockies/1.0.3:
+    resolution: {integrity: sha512-iGDh2M6pFuXg9kyW+U//963LKylSLFpLG5hZvUppCjhkiDwsYquQPyamxCQlLASYySS3gGKAki2eWG9qIHKCew==}
+    dev: false
 
   /@emmetio/abbreviation/2.2.3:
     resolution: {integrity: sha512-87pltuCPt99aL+y9xS6GPZ+Wmmyhll2WXH73gG/xpGcQ84DRnptBsI2r0BeIQ0EB/SQTOe2ANPqFqj3Rj5FOGA==}

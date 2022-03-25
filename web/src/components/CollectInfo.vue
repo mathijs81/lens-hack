@@ -1,78 +1,172 @@
 <template>
   <div class="d-flex justify-content-end align-items-center">
-    <span v-if="type == 'default'">FREE</span>
-    <span v-else-if="type == 'english'">Current bid: {{ currentBid }}</span>
-    <span v-else-if="type == 'dutch'">
-      <div v-if="progress != null" class="progress">
-        <div class="progress-bar" role="progressbar" :style="'width: ' + progress + '%'" />
-      </div>
-      Price: {{ price }}
-    </span>
-    <span v-else>Collection module unknown?</span>
-    <a href="#" class="btn btn-primary btn-sm">Collect</a>
+    <div v-if="expired" class="text-muted">
+      Collect time window expired
+    </div>
+    <div v-else-if="collectAddress != null" class="text-muted">
+      Collected by <Address :address="collectAddress" /><template v-if="collectPrice != null">
+        for <img src="/dollar.svg">{{ collectPrice }}
+      </template>
+    </div>
+    <template v-else>
+      <span v-if="type == 'default'">FREE</span>
+      <template v-else-if="type == 'english'">
+        {{ timeLeft }}
+        <a v-if="!canBeCollected" href="#" class="ms-2 btn btn-primary btn-sm" @click="runBid()">Bid $ {{ currentBid }}</a>
+      </template>
+      <template v-else-if="type == 'dutch'">
+        <div class="dutch-progress">
+          {{ timeLeft }}
+          <div v-if="progress != null" class="progress">
+            <div class="progress-bar" role="progressbar" :style="'width: ' + progress + '%'" />
+          </div>
+        </div>
+        <span class="ms-2">
+          <img src="/dollar.svg">{{ price }}
+        </span>
+      </template>
+      <span v-else>Collection module unknown?</span>
+      <a v-if="canBeCollected" href="#" class="ms-2 btn btn-primary btn-sm" @click="runCollect()">Collect</a>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
+import dayjs from 'dayjs';
 import { useIntervalFn } from '@vueuse/core';
+import type { BigNumber } from 'ethers';
+import { constants, utils } from 'ethers';
+import { defaultAbiCoder } from 'ethers/lib/utils';
 import { ref } from 'vue';
-import { BigNumber, utils } from 'ethers';
-import type { PublicationStructStructOutput } from '../lens-types/ILensHub';
+import type { Post } from '../data/post';
+import { LensHub__factory } from '../lens-types/factories/LensHub__factory';
 import { DutchAuctionCollectModule__factory } from '../typechain-types/factories/DutchAuctionCollectModule__factory';
+import { EnglishAuctionCollectModule__factory } from '../typechain-types/factories/EnglishAuctionCollectModule__factory';
 import { addressesEqual, lensAddr, myAddr } from '../util/addresses';
 import { wallet } from '../util/wallet';
-import type { Post } from '../data/post';
-import { EnglishAuctionCollectModule__factory } from '../typechain-types/factories/EnglishAuctionCollectModule__factory';
+import { CollectNFT__factory } from '../lens-types/factories/CollectNFT__factory';
+import Address from './Address.vue';
 
 const props = defineProps({
   post: Object as () => Post,
 });
 
 let type = 'unknown';
+let collect = async() => { console.log('not implemented'); };
+let bid = async() => { console.log('not implemented'); };
 
-if (addressesEqual(props.post?.raw.collectModule, myAddr.dutchAuction))
-  type = 'dutch';
-
-else if (addressesEqual(props.post?.raw.collectModule, myAddr.englishAuction))
-  type = 'english';
-
-else if (addressesEqual(props.post?.raw.collectModule, lensAddr['empty collect module']))
-  type = 'default';
+const runCollect = () => { collect(); };
+const runBid = () => { bid(); };
 
 const price = ref('---');
 const expired = ref(false);
-const progress = ref(null as number|null);
+const progress = ref(null as number | null);
+const timeLeft = ref('');
 
-const updateDutchPrice = async() => {
-  console.log('update dutch');
-  const contract = await DutchAuctionCollectModule__factory.connect(myAddr.dutchAuction, wallet.getProvider()!.getSigner());
-  const settings = await contract.getSettings(props.post!.profileId, props.post!.pubId);
-  const t = Date.now() / 1000;
-  expired.value = t > settings.endTimestamp;
-  if (!expired.value) {
-    const priceBn = await contract.getCurrentPrice(props.post!.profileId, props.post!.pubId);
-    progress.value = Math.round((100.0 * (t - settings.startTimestamp)) / (settings.endTimestamp - settings.startTimestamp));
-    price.value = utils.formatEther(priceBn);
+const currentBid = ref(null as string | null);
+const collectAddress = ref(null as null | string);
+const canBeCollected = ref(true);
+
+function formatBn(bn: BigNumber) {
+  return parseFloat(utils.formatEther(bn)).toFixed(2);
+}
+
+async function setCollectorAddress() {
+  const lensHub = await LensHub__factory.connect(lensAddr['lensHub proxy'], wallet.getProvider()!.getSigner());
+  const collectNftAddress = await lensHub.getCollectNFT(props.post!.profileId, props.post!.pubId);
+  if (collectNftAddress !== constants.AddressZero) {
+    const collectNft = await CollectNFT__factory.connect(collectNftAddress, wallet.getProvider()!.getSigner());
+    collectAddress.value = await collectNft.ownerOf(1);
+    return true;
   }
-};
+  return false;
+}
 
-const currentBid = ref('---');
+if (addressesEqual(props.post?.raw.collectModule, myAddr.dutchAuction)) {
+  type = 'dutch';
+  (async() => {
+    const contract = await DutchAuctionCollectModule__factory.connect(myAddr.dutchAuction, wallet.getProvider()!.getSigner());
+    let settings = await contract.getSettings(props.post!.profileId, props.post!.pubId);
 
-const updateEnglishPrice = async() => {
-  const contract = await EnglishAuctionCollectModule__factory.connect(myAddr.englishAuction, wallet.getProvider()!.getSigner());
-  const minBid = await contract.getMinimumBid(props.post!.profileId, props.post!.pubId);
-  currentBid.value = utils.formatEther(minBid);
-};
+    collect = async() => {
+      const lensHub = await LensHub__factory.connect(lensAddr['lensHub proxy'], wallet.getProvider()!.getSigner());
+      const price = await contract.getCurrentPrice(props.post!.profileId, props.post!.pubId);
+      const data = defaultAbiCoder.encode(
+        ['address', 'uint256'],
+        [settings.currency, price],
+      );
+      await lensHub.collect(props.post!.profileId, props.post!.pubId, data);
+    };
 
-switch (type) {
-  case 'dutch':
+    const updateDutchPrice = async() => {
+      settings = await contract.getSettings(props.post!.profileId, props.post!.pubId);
+      const t = (await wallet.getProvider()!.getBlock('latest')).timestamp;
+      if ((settings.flags.toNumber() & 0x1) === 0x1) {
+        await setCollectorAddress();
+        return;
+      }
+
+      expired.value = t > settings.endTimestamp;
+      if (!expired.value) {
+        const priceBn = await contract.getCurrentPrice(props.post!.profileId, props.post!.pubId);
+        progress.value = Math.round((100.0 * (t - settings.startTimestamp)) / (settings.endTimestamp - settings.startTimestamp));
+        timeLeft.value = `${dayjs(settings.endTimestamp * 1000).from(t * 1000, true)} left`;
+        price.value = formatBn(priceBn);
+      }
+    };
     updateDutchPrice();
     useIntervalFn(() => updateDutchPrice(), 5000);
-    break;
-  case 'english':
+  })();
+}
+else if (addressesEqual(props.post?.raw.collectModule, myAddr.englishAuction)) {
+  type = 'english';
+  canBeCollected.value = false;
+  (async() => {
+    const contract = await EnglishAuctionCollectModule__factory.connect(myAddr.englishAuction, wallet.getProvider()!.getSigner());
+    let settings = await contract.getSettings(props.post!.profileId, props.post!.pubId);
+
+    const updateEnglishPrice = async() => {
+      settings = await contract.getSettings(props.post!.profileId, props.post!.pubId);
+      const minBid = await contract.getMinimumBid(props.post!.profileId, props.post!.pubId);
+      currentBid.value = formatBn(minBid);
+      bid = async() => {
+        await contract.makeBid(props.post!.profileId, props.post!.pubId, settings.currency, minBid);
+      };
+      const t = (await wallet.getProvider()!.getBlock('latest')).timestamp;
+      expired.value = t > settings.endTimestamp;
+      if (!expired.value) { timeLeft.value = `${dayjs(settings.endTimestamp * 1000).from(t * 1000, true)} left`; }
+      else {
+        let timeLeftStr = '';
+        if (settings.highestBidder !== constants.AddressZero) {
+          canBeCollected.value = true;
+          expired.value = false;
+          timeLeftStr = `Highest bid is $ ${formatBn(await contract.getCurrentBid(props.post!.profileId, props.post!.pubId))}`;
+        }
+        else {
+          if (setCollectorAddress())
+            expired.value = false;
+        }
+        timeLeft.value = timeLeftStr;
+      }
+    };
     updateEnglishPrice();
     // For demo: update every 5 seconds. TODO: update based on contract events.
     useIntervalFn(() => updateEnglishPrice(), 5000);
-}
 
+    collect = async() => {
+      contract.finishAuction(props.post!.profileId, props.post!.pubId);
+    };
+  })();
+}
+else if (addressesEqual(props.post?.raw.collectModule, lensAddr['empty collect module'])) {
+  type = 'default';
+  collect = async() => {
+    const lensHub = await LensHub__factory.connect(lensAddr['lensHub proxy'], wallet.getProvider()!.getSigner());
+    await lensHub.collect(props.post!.profileId, props.post!.pubId, []);
+  };
+}
 </script>
+<style>
+.dutch-progress {
+  min-width: 200px;
+}</style>

@@ -20,13 +20,12 @@ export const lensAddr = {
 };
 
 export const myAddr = {
-    'dutchAuction' : '0x28497Bfb3057e390fD4B747b4B12D4fF9D3B10b2',
-    'englishAuction': '0x31746662a8fFe9bD2212B5a8DC9576a90BE9c14d',
-}
+  dutchAuction: '0x28497Bfb3057e390fD4B747b4B12D4fF9D3B10b2',
+  englishAuction: '0x31746662a8fFe9bD2212B5a8DC9576a90BE9c14d',
+};
 
 export function addressesEqual(address1: string | undefined | null, address2: string | undefined | null): boolean {
-    if (address1 && address2)
-      return address1.toLowerCase() === address2.toLowerCase();
-    return false;
-  }
-  
+  if (address1 && address2)
+    return address1.toLowerCase() === address2.toLowerCase();
+  return false;
+}

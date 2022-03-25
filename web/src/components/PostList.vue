@@ -9,25 +9,23 @@
           <span><img src="/at.svg">{{ post.profileHandle }}</span>
           <span><img src="/clock.svg">{{ dayjs(post.timestamp).fromNow() }}</span>
         </div>
-        <CollectInfo :post="post" />
+        <CollectInfo class="collect-info" :post="post" />
       </div>
     </div>
   </div>
 </template>
 
-<script setup lang="ts">import { reactive, watch, watchEffect } from 'vue';
-
+<script setup lang="ts">
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
-
-import { BigNumber, constants } from 'ethers';
-import { LensHub__factory } from '../lens-types';
-import { wallet } from '../util/wallet';
-import { lensAddr } from '../util/addresses';
-import type { PublicationStructStructOutput } from '../lens-types/ILensHub';
-import { PostCreatedEvent } from '../lens-types/Events';
+import { BigNumber } from 'ethers';
+import { reactive, watch } from 'vue';
 import type { Post } from '../data/post';
+import { LensHub__factory } from '../lens-types';
+import { lensAddr } from '../util/addresses';
+import { wallet } from '../util/wallet';
 import CollectInfo from './CollectInfo.vue';
+
 dayjs.extend(relativeTime);
 
 defineProps({
@@ -62,6 +60,7 @@ watch([wallet.address], async() => {
         pubId: BigNumber.from(i),
         raw: post,
         profileHandle: profile.handle,
+        // TODO: actual way to get a post's timestamp
         timestamp: Date.now(),
       });
     }
@@ -69,7 +68,7 @@ watch([wallet.address], async() => {
 });
 </script>
 
-<style scoped>
+<style>
 .post {
   max-width: 600px;
 }
@@ -78,7 +77,7 @@ watch([wallet.address], async() => {
   margin-bottom: 8px;
   font-size: 14px;
 }
-.post-info img {
+.post-info img, .collect-info img {
   height: 16px;
   margin-right: 4px;
 }
