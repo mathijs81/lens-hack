@@ -75,7 +75,7 @@ contract EnglishAuctionCollectModule is ICollectModule, FeeModuleBase, FollowVal
 
     function getMinimumBid(uint256 profileId, uint256 pubId) public view returns (uint256 price) {
         AuctionSettings storage settings = _profilePubToSettingsMap[profileId][pubId];
-        require(settings.highestBid > 0, "Not initialized");
+        require(settings.highestBid > 0, 'Not initialized');
         if (settings.highestBidder == address(0)) {
             return settings.highestBid;
         } else {

@@ -24,11 +24,15 @@ body {
     min-height: 100vh;
 }
 .btn {
-    min-width: 300px;
     padding: 10px 16px;
     box-shadow: 0px 1px 1px rgba(0, 0, 0, 0.08);
     border-radius: 6px;
 }
 .btn-light {
     color: $primary;
+}
+
+.card {
+    box-shadow: 0px 4px 5px -1px rgba(112, 58, 202, 0.08);
+    border-radius: 18px;
 }

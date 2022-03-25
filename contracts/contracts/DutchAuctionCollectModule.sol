@@ -71,6 +71,14 @@ contract DutchAuctionCollectModule is ICollectModule, FeeModuleBase, FollowValid
             (endTimestamp - startTimestamp);
     }
 
+    function getSettings(uint256 profileId, uint256 pubId)
+        public
+        view
+        returns (DutchAuctionSettings memory settings)
+    {
+        return _profilePubToSettingsMap[profileId][pubId];
+    }
+
     function initializePublicationCollectModule(
         uint256 profileId,
         uint256 pubId,

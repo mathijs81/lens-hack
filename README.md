@@ -1,14 +1,7 @@
-# Lens hack
+# Auction-based Lens Modules
 
-Submission for LFGrow hackathon
+LFGrow hackathon 2022
 
-## Run locally
+Modules for auctioning a collect of your post: both Dutch auction (decreasing price) and English auction (increasing price).
 
-Pull the repository, run 
-```
-pnpm i
-pnpm dev
-```
-
-The site is then available at localhost:3000
-
+`contracts` contains the solidity code and `web` is a demo frontend to show posts.
