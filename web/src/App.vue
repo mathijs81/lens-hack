@@ -8,7 +8,7 @@
 
   <div class="container app position-relative">
     <h1 class="h1 pt-4">
-      Auction Lens posts demo
+      Lens Collect Auctions
     </h1>
     <h5 class="h5 py-2">
       LFGrow 2022
