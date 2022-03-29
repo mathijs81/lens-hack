@@ -114,6 +114,7 @@ task('setup-demo', 'Sets up the Demo in web/ after `npm run full-deploy-local`')
     }
 
     const allAddresses = await hre.ethers.getSigners();
+    console.log(`treasury: ${allAddresses[2].address}`);
     console.log(`user: ${user.address}`);
     console.log(`addtl. user: ${allAddresses[4].address}`);
     console.log(`addtl. user: ${allAddresses[5].address}`);

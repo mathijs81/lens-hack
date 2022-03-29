@@ -4,9 +4,7 @@
       Collect time window expired
     </div>
     <div v-else-if="collectAddress != null" class="text-muted">
-      Collected by <Address :address="collectAddress" /><template v-if="collectPrice != null">
-        for <img src="/dollar.svg">{{ collectPrice }}
-      </template>
+      Collected by <Address :address="collectAddress" />
     </div>
     <template v-else>
       <span v-if="type == 'default'">FREE</span>
@@ -37,13 +35,13 @@ import { useIntervalFn } from '@vueuse/core';
 import type { BigNumber } from 'ethers';
 import { constants, utils } from 'ethers';
 import { defaultAbiCoder } from 'ethers/lib/utils';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import type { Post } from '../data/post';
 import { LensHub__factory } from '../lens-types/factories/LensHub__factory';
 import { DutchAuctionCollectModule__factory } from '../typechain-types/factories/DutchAuctionCollectModule__factory';
 import { EnglishAuctionCollectModule__factory } from '../typechain-types/factories/EnglishAuctionCollectModule__factory';
 import { addressesEqual, lensAddr, myAddr } from '../util/addresses';
-import { wallet } from '../util/wallet';
+import { directProvider, formatBn, wallet } from '../util/wallet';
 import { CollectNFT__factory } from '../lens-types/factories/CollectNFT__factory';
 import Address from './Address.vue';
 
@@ -67,15 +65,11 @@ const currentBid = ref(null as string | null);
 const collectAddress = ref(null as null | string);
 const canBeCollected = ref(true);
 
-function formatBn(bn: BigNumber) {
-  return parseFloat(utils.formatEther(bn)).toFixed(2);
-}
-
 async function setCollectorAddress() {
-  const lensHub = await LensHub__factory.connect(lensAddr['lensHub proxy'], wallet.getProvider()!.getSigner());
+  const lensHub = await LensHub__factory.connect(lensAddr['lensHub proxy'], directProvider.getSigner(2));
   const collectNftAddress = await lensHub.getCollectNFT(props.post!.profileId, props.post!.pubId);
   if (collectNftAddress !== constants.AddressZero) {
-    const collectNft = await CollectNFT__factory.connect(collectNftAddress, wallet.getProvider()!.getSigner());
+    const collectNft = await CollectNFT__factory.connect(collectNftAddress, directProvider);
     collectAddress.value = await collectNft.ownerOf(1);
     return true;
   }
@@ -85,12 +79,12 @@ async function setCollectorAddress() {
 if (addressesEqual(props.post?.raw.collectModule, myAddr.dutchAuction)) {
   type = 'dutch';
   (async() => {
-    const contract = await DutchAuctionCollectModule__factory.connect(myAddr.dutchAuction, wallet.getProvider()!.getSigner());
-    let settings = await contract.getSettings(props.post!.profileId, props.post!.pubId);
+    const readContract = await DutchAuctionCollectModule__factory.connect(myAddr.dutchAuction, directProvider);
+    let settings = await readContract.getSettings(props.post!.profileId, props.post!.pubId);
 
     collect = async() => {
       const lensHub = await LensHub__factory.connect(lensAddr['lensHub proxy'], wallet.getProvider()!.getSigner());
-      const price = await contract.getCurrentPrice(props.post!.profileId, props.post!.pubId);
+      const price = await readContract.getCurrentPrice(props.post!.profileId, props.post!.pubId);
       const data = defaultAbiCoder.encode(
         ['address', 'uint256'],
         [settings.currency, price],
@@ -99,8 +93,8 @@ if (addressesEqual(props.post?.raw.collectModule, myAddr.dutchAuction)) {
     };
 
     const updateDutchPrice = async() => {
-      settings = await contract.getSettings(props.post!.profileId, props.post!.pubId);
-      const t = (await wallet.getProvider()!.getBlock('latest')).timestamp;
+      settings = await readContract.getSettings(props.post!.profileId, props.post!.pubId);
+      const t = (await directProvider.getBlock('latest')).timestamp;
       if ((settings.flags.toNumber() & 0x1) === 0x1) {
         await setCollectorAddress();
         return;
@@ -108,31 +102,33 @@ if (addressesEqual(props.post?.raw.collectModule, myAddr.dutchAuction)) {
 
       expired.value = t > settings.endTimestamp;
       if (!expired.value) {
-        const priceBn = await contract.getCurrentPrice(props.post!.profileId, props.post!.pubId);
+        const priceBn = await readContract.getCurrentPrice(props.post!.profileId, props.post!.pubId);
         progress.value = Math.round((100.0 * (t - settings.startTimestamp)) / (settings.endTimestamp - settings.startTimestamp));
         timeLeft.value = `${dayjs(settings.endTimestamp * 1000).from(t * 1000, true)} left`;
         price.value = formatBn(priceBn);
       }
     };
     updateDutchPrice();
-    useIntervalFn(() => updateDutchPrice(), 5000);
+    watch(wallet.blockNumber, () => updateDutchPrice());
   })();
 }
 else if (addressesEqual(props.post?.raw.collectModule, myAddr.englishAuction)) {
   type = 'english';
   canBeCollected.value = false;
   (async() => {
-    const contract = await EnglishAuctionCollectModule__factory.connect(myAddr.englishAuction, wallet.getProvider()!.getSigner());
-    let settings = await contract.getSettings(props.post!.profileId, props.post!.pubId);
+    const readContract = await EnglishAuctionCollectModule__factory.connect(myAddr.englishAuction, directProvider);
+    const writeContract = await EnglishAuctionCollectModule__factory.connect(myAddr.englishAuction, wallet.getProvider()!.getSigner());
+    let settings = await readContract.getSettings(props.post!.profileId, props.post!.pubId);
 
     const updateEnglishPrice = async() => {
-      settings = await contract.getSettings(props.post!.profileId, props.post!.pubId);
-      const minBid = await contract.getMinimumBid(props.post!.profileId, props.post!.pubId);
+      console.log('update englihs');
+      settings = await readContract.getSettings(props.post!.profileId, props.post!.pubId);
+      const minBid = await readContract.getMinimumBid(props.post!.profileId, props.post!.pubId);
       currentBid.value = formatBn(minBid);
       bid = async() => {
-        await contract.makeBid(props.post!.profileId, props.post!.pubId, settings.currency, minBid);
+        await writeContract.makeBid(props.post!.profileId, props.post!.pubId, settings.currency, minBid);
       };
-      const t = (await wallet.getProvider()!.getBlock('latest')).timestamp;
+      const t = (await directProvider.getBlock('latest')).timestamp;
       expired.value = t > settings.endTimestamp;
       if (!expired.value) { timeLeft.value = `${dayjs(settings.endTimestamp * 1000).from(t * 1000, true)} left`; }
       else {
@@ -140,21 +136,21 @@ else if (addressesEqual(props.post?.raw.collectModule, myAddr.englishAuction)) {
         if (settings.highestBidder !== constants.AddressZero) {
           canBeCollected.value = true;
           expired.value = false;
-          timeLeftStr = `Highest bid is $ ${formatBn(await contract.getCurrentBid(props.post!.profileId, props.post!.pubId))}`;
+          timeLeftStr = `Highest bid is $ ${formatBn(await readContract.getCurrentBid(props.post!.profileId, props.post!.pubId))}`;
         }
         else {
-          if (setCollectorAddress())
+          if (await setCollectorAddress())
             expired.value = false;
         }
         timeLeft.value = timeLeftStr;
       }
     };
     updateEnglishPrice();
-    // For demo: update every 5 seconds. TODO: update based on contract events.
-    useIntervalFn(() => updateEnglishPrice(), 5000);
+    // For demo: update every block. TODO: update based on contract events.
+    watch(wallet.blockNumber, () => updateEnglishPrice());
 
     collect = async() => {
-      contract.finishAuction(props.post!.profileId, props.post!.pubId);
+      writeContract.finishAuction(props.post!.profileId, props.post!.pubId);
     };
   })();
 }
